@@ -43,7 +43,7 @@ float humidity;
 
 // loop timings
 unsigned long lastTime = 0;
-unsigned long timerDelay = 5 * 60000;
+unsigned long timerDelay = 60000;
 unsigned long count = 0;
 unsigned long totalMoisture = 0;
 
@@ -74,24 +74,11 @@ void loop()
   // air
   sensors_event_t event;
   dht.temperature().getEvent(&event);
-  if (isnan(event.temperature))
-  {
-    Serial.println(F("Error reading temperature!"));
-  }
-  else
-  {
-    temp = event.temperature;
-  }
-  // Get humidity event and print its value.
+  float loggedTemp = event.temperature;
+  temp += loggedTemp;
   dht.humidity().getEvent(&event);
-  if (isnan(event.relative_humidity))
-  {
-    Serial.println(F("Error reading humidity!"));
-  }
-  else
-  {
-    humidity = event.relative_humidity;
-  }
+  float loggedHumidity = event.relative_humidity;
+  humidity += loggedHumidity;
 
   // debug region start
   SoilMoisturePercentage = map(MoistureLevel, OpenAirReading, WaterReading, 0, 100);
@@ -106,11 +93,10 @@ void loop()
   Serial.print(" high: ");
   Serial.print(high);
   Serial.print(" Temp: ");
-  Serial.print(temp);
-  Serial.print("C Humidity: ");
-  Serial.print(humidity);
+  Serial.print(loggedTemp);
+  Serial.print("°C Humidity: ");
+  Serial.print(loggedHumidity);
   Serial.println("%");
-  
 
   // debug region end
 
@@ -123,6 +109,9 @@ void loop()
     SoilMoisturePercentage = map(averageMoistureLevel, OpenAirReading, WaterReading, 0, 100);
 
     SoilMoisturePercentage = constrain(SoilMoisturePercentage, 0, 100);
+
+    temp = temp / (float)count;
+    humidity = humidity / (float)count;
 
     ThingSpeak.setField(1, SoilMoisturePercentage);
     ThingSpeak.setField(2, low);
@@ -138,12 +127,19 @@ void loop()
     Serial.print("% low: ");
     Serial.print(low);
     Serial.print(" high: ");
-    Serial.println(high);
+    Serial.print(high);
+    Serial.print(" temp: ");
+    Serial.print(temp);
+    Serial.print("°C humidity: ");
+    Serial.print(humidity);
+    Serial.println("%");
 
     count = 0;
     totalMoisture = 0;
     high = 0;
     low = 9999;
+    temp = 0;
+    humidity = 0;
   }
   else
   {
