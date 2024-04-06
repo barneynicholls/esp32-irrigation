@@ -16,16 +16,16 @@ const char *myWriteAPIKey = SECRET_WRITE_APIKEY;
 // sensors
 
 // soil
-#define AOUT_PIN A6 // Arduino pin that connects to AOUT pin of moisture sensor (D34 maps to ADC6)
-// this ADC pin must not be on ADC2 circuit.  Try a pin above for example D33+
+#define AOUT_PIN A6 
+// Arduino pin that connects to AOUT pin of moisture sensor 
+// this ADC pin must not be on ADC2 circuit.  Try a pin above for example D33+ (D34 maps to ADC6)
 
-const int OpenAirReading = 2700; // calibration data 1
-const int WaterReading = 800;    // calibration data 2
-int MoistureLevel = 0;
-float SoilMoisturePercentage = 0;
+const unsigned short OpenAirReading = 2700; // calibration data 1
+const unsigned short WaterReading = 800;    // calibration data 2
 
-int high = 0;
-int low = 9999;
+unsigned long moisture = 0;
+unsigned short capacitanceHigh = 0;
+unsigned short capacitanceLow = 9999;
 
 // air
 #include <Adafruit_Sensor.h>
@@ -33,7 +33,6 @@ int low = 9999;
 #include <DHT_U.h>
 
 #define DHTPIN 23 // Digital pin connected to the DHT sensor
-
 #define DHTTYPE DHT11 // DHT 11
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
@@ -45,7 +44,6 @@ float humidity;
 unsigned long lastTime = 0;
 unsigned long timerDelay = 60000;
 unsigned long count = 0;
-unsigned long totalMoisture = 0;
 
 void setup()
 {
@@ -60,42 +58,43 @@ void setup()
 
 void loop()
 {
-  MoistureLevel = analogRead(AOUT_PIN);
+  // soil
+  u_int16_t moistureReading = analogRead(AOUT_PIN);
 
-  if (MoistureLevel == 0)
+  if (moistureReading == 0)
     return;
 
   count++;
-  totalMoisture += MoistureLevel;
 
-  high = max(MoistureLevel, high);
-  low = min(MoistureLevel, low);
+  moisture += moistureReading;
+  capacitanceHigh = max(moistureReading, capacitanceHigh);
+  capacitanceLow = min(moistureReading, capacitanceLow);
 
   // air
   sensors_event_t event;
   dht.temperature().getEvent(&event);
-  float loggedTemp = event.temperature;
-  temp += loggedTemp;
+  float tempReading = event.temperature;
+  temp += tempReading;
   dht.humidity().getEvent(&event);
-  float loggedHumidity = event.relative_humidity;
-  humidity += loggedHumidity;
+  float humidityReading = event.relative_humidity;
+  humidity += humidityReading;
 
   // debug region start
-  SoilMoisturePercentage = map(MoistureLevel, OpenAirReading, WaterReading, 0, 100);
-  SoilMoisturePercentage = constrain(SoilMoisturePercentage, 0, 100);
+  long soilMoisturePercentage = map(moistureReading, OpenAirReading, WaterReading, 0, 100);
+  soilMoisturePercentage = constrain(soilMoisturePercentage, 0, 100);
 
   Serial.print("Debug -> Moisture: ");
-  Serial.print(SoilMoisturePercentage);
+  Serial.print(soilMoisturePercentage);
   Serial.print("% level: ");
-  Serial.print(MoistureLevel);
+  Serial.print(moistureReading);
   Serial.print(" low: ");
-  Serial.print(low);
+  Serial.print(capacitanceLow);
   Serial.print(" high: ");
-  Serial.print(high);
+  Serial.print(capacitanceHigh);
   Serial.print(" Temp: ");
-  Serial.print(loggedTemp);
+  Serial.print(tempReading);
   Serial.print("°C Humidity: ");
-  Serial.print(loggedHumidity);
+  Serial.print(humidityReading);
   Serial.println("%");
 
   // debug region end
@@ -104,18 +103,17 @@ void loop()
   {
     lastTime = millis();
 
-    float averageMoistureLevel = totalMoisture / count;
+    moisture = moisture / count;
 
-    SoilMoisturePercentage = map(averageMoistureLevel, OpenAirReading, WaterReading, 0, 100);
+    moisture = map(moisture, OpenAirReading, WaterReading, 0, 100);
+    moisture = constrain(moisture, 0, 100);
 
-    SoilMoisturePercentage = constrain(SoilMoisturePercentage, 0, 100);
+    temp = temp / count;
+    humidity = humidity / count;
 
-    temp = temp / (float)count;
-    humidity = humidity / (float)count;
-
-    ThingSpeak.setField(1, SoilMoisturePercentage);
-    ThingSpeak.setField(2, low);
-    ThingSpeak.setField(3, high);
+    ThingSpeak.setField(1, (long) moisture);
+    ThingSpeak.setField(2, capacitanceLow);
+    ThingSpeak.setField(3, capacitanceHigh);
     ThingSpeak.setField(4, temp);
     ThingSpeak.setField(5, humidity);
     int result = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
@@ -123,11 +121,11 @@ void loop()
     Serial.print("Thingspeak: ");
     Serial.print(result);
     Serial.print(" Moisture: ");
-    Serial.print(SoilMoisturePercentage);
+    Serial.print(moisture);
     Serial.print("% low: ");
-    Serial.print(low);
+    Serial.print(capacitanceLow);
     Serial.print(" high: ");
-    Serial.print(high);
+    Serial.print(capacitanceHigh);
     Serial.print(" temp: ");
     Serial.print(temp);
     Serial.print("°C humidity: ");
@@ -135,9 +133,9 @@ void loop()
     Serial.println("%");
 
     count = 0;
-    totalMoisture = 0;
-    high = 0;
-    low = 9999;
+    moisture = 0;
+    capacitanceHigh = 0;
+    capacitanceLow = 9999;
     temp = 0;
     humidity = 0;
   }
