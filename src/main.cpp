@@ -40,6 +40,10 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 float temp;
 float humidity;
 
+//relay
+#define RELAY_PIN 22
+bool off = true;
+
 // loop timings
 unsigned long lastTime = 0;
 unsigned long timerDelay = 60000;
@@ -48,6 +52,8 @@ unsigned long count = 0;
 void setup()
 {
   Serial.begin(9600);
+
+  pinMode(RELAY_PIN, OUTPUT);
 
   dht.begin();
 
@@ -58,11 +64,17 @@ void setup()
 
 void loop()
 {
+
   // soil
   u_int16_t moistureReading = analogRead(AOUT_PIN);
 
   if (moistureReading == 0)
     return;
+    
+  // relay test
+digitalWrite(RELAY_PIN, off ? LOW : HIGH);
+
+off = !off;
 
   count++;
 
