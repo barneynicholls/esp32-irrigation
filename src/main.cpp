@@ -16,7 +16,7 @@ const char *myWriteAPIKey = SECRET_WRITE_APIKEY;
 // sensors
 
 // soil
-#define AOUT_PIN A6 
+#define AOUT_PIN A6
 // Arduino pin that connects to AOUT pin of moisture sensor 
 // this ADC pin must not be on ADC2 circuit.  Try a pin above for example D33+ (D34 maps to ADC6)
 
@@ -32,7 +32,7 @@ unsigned short capacitanceLow = 9999;
 #include <DHT.h>
 #include <DHT_U.h>
 
-#define DHTPIN 23 // Digital pin connected to the DHT sensor
+#define DHTPIN 32 // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT11 // DHT 11
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
@@ -41,7 +41,7 @@ float temp;
 float humidity;
 
 //relay
-#define RELAY_PIN 22
+#define RELAY_PIN 13
 bool off = true;
 
 // loop timings
